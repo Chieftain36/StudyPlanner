@@ -8,29 +8,51 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kz.studyplanner.data.StudyTask
 import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskFormScreen(
     onBack: () -> Unit,
-    onSave: (String, String, String, String) -> String?
+    onSave: (String, String, String, String) -> String?,
+    initialTask: StudyTask? = null
 ) {
-    var title by rememberSaveable { mutableStateOf("") }
-    var course by rememberSaveable { mutableStateOf("") }
-
-    var dueDate by rememberSaveable {
-        mutableStateOf(LocalDate.now().toString())
+    var title by rememberSaveable(initialTask?.id) {
+        mutableStateOf(initialTask?.title ?: "")
     }
 
-    var notes by rememberSaveable { mutableStateOf("") }
-    var error by rememberSaveable { mutableStateOf<String?>(null) }
+    var course by rememberSaveable(initialTask?.id) {
+        mutableStateOf(initialTask?.course ?: "")
+    }
+
+    var dueDate by rememberSaveable(initialTask?.id) {
+        mutableStateOf(
+            initialTask?.dueDate ?: LocalDate.now().toString()
+        )
+    }
+
+    var notes by rememberSaveable(initialTask?.id) {
+        mutableStateOf(initialTask?.notes ?: "")
+    }
+
+    var error by rememberSaveable(initialTask?.id) {
+        mutableStateOf<String?>(null)
+    }
+
+    val isEditing = initialTask != null
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("New task")
+                    Text(
+                        text = if (isEditing) {
+                            "Edit task"
+                        } else {
+                            "New task"
+                        }
+                    )
                 },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
@@ -50,7 +72,11 @@ fun TaskFormScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Plan your next step",
+                text = if (isEditing) {
+                    "Update your plan"
+                } else {
+                    "Plan your next step"
+                },
                 style = MaterialTheme.typography.headlineMedium
             )
 
@@ -60,9 +86,7 @@ fun TaskFormScreen(
                     title = it
                     error = null
                 },
-                label = {
-                    Text("Task title *")
-                },
+                label = { Text("Task title *") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -73,9 +97,7 @@ fun TaskFormScreen(
                     course = it
                     error = null
                 },
-                label = {
-                    Text("Course *")
-                },
+                label = { Text("Course *") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -86,9 +108,7 @@ fun TaskFormScreen(
                     dueDate = it
                     error = null
                 },
-                label = {
-                    Text("Due date *")
-                },
+                label = { Text("Due date *") },
                 supportingText = {
                     Text("YYYY-MM-DD, for example 2026-11-25")
                 },
@@ -102,9 +122,7 @@ fun TaskFormScreen(
                     notes = it
                     error = null
                 },
-                label = {
-                    Text("Notes")
-                },
+                label = { Text("Notes") },
                 minLines = 4,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -122,7 +140,13 @@ fun TaskFormScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Save task")
+                Text(
+                    text = if (isEditing) {
+                        "Save changes"
+                    } else {
+                        "Save task"
+                    }
+                )
             }
         }
     }

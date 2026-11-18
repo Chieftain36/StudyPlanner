@@ -24,7 +24,6 @@ fun PlannerNavigation(
     plannerViewModel: PlannerViewModel
 ) {
     val navController = rememberNavController()
-
     val tasks by plannerViewModel.tasks.collectAsStateWithLifecycle()
 
     NavHost(
@@ -110,6 +109,13 @@ fun PlannerNavigation(
                 onBack = {
                     navController.popBackStack()
                 },
+                onEdit = {
+                    task?.let {
+                        navController.navigate("edit/${it.id}") {
+                            launchSingleTop = true
+                        }
+                    }
+                },
                 onToggle = {
                     task?.let {
                         plannerViewModel.toggleTaskCompletion(it.id)
@@ -123,6 +129,60 @@ fun PlannerNavigation(
                 }
             )
         }
+
+        composable(
+            route = "edit/{taskId}",
+            arguments = listOf(
+                navArgument("taskId") {
+                    type = NavType.LongType
+                }
+            )
+        ) { backStackEntry ->
+            val taskId = backStackEntry.arguments?.getLong("taskId")
+            val task = tasks.find { it.id == taskId }
+
+            if (task == null) {
+                TaskDetailScreen(
+                    task = null,
+                    onBack = { navController.popBackStack() },
+                    onEdit = {},
+                    onToggle = {},
+                    onDelete = {}
+                )
+            } else {
+                TaskFormScreen(
+                    initialTask = task,
+                    onBack = {
+                        navController.popBackStack()
+                    },
+                    onSave = { title, course, dueDate, notes ->
+                        var error = plannerViewModel.validateTask(
+                            title = title,
+                            course = course,
+                            dueDate = dueDate
+                        )
+
+                        if (error == null) {
+                            val updated = plannerViewModel.updateTask(
+                                taskId = task.id,
+                                title = title,
+                                course = course,
+                                dueDate = dueDate,
+                                notes = notes
+                            )
+
+                            if (updated) {
+                                navController.popBackStack()
+                            } else {
+                                error = "Task no longer exists."
+                            }
+                        }
+
+                        error
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -131,6 +191,7 @@ fun PlannerNavigation(
 private fun TaskDetailScreen(
     task: StudyTask?,
     onBack: () -> Unit,
+    onEdit: () -> Unit,
     onToggle: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -141,12 +202,17 @@ private fun TaskDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text("Task details")
-                },
+                title = { Text("Task details") },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
                         Text("Back")
+                    }
+                },
+                actions = {
+                    if (task != null) {
+                        TextButton(onClick = onEdit) {
+                            Text("Edit")
+                        }
                     }
                 }
             )
@@ -199,9 +265,7 @@ private fun TaskDetailScreen(
                 )
 
                 Text(
-                    text = task.notes.ifBlank {
-                        "No notes yet."
-                    },
+                    text = task.notes.ifBlank { "No notes yet." },
                     style = MaterialTheme.typography.bodyLarge
                 )
 
@@ -219,9 +283,7 @@ private fun TaskDetailScreen(
                 }
 
                 OutlinedButton(
-                    onClick = {
-                        showDeleteDialog = true
-                    },
+                    onClick = { showDeleteDialog = true },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
@@ -235,12 +297,8 @@ private fun TaskDetailScreen(
 
     if (showDeleteDialog && task != null) {
         AlertDialog(
-            onDismissRequest = {
-                showDeleteDialog = false
-            },
-            title = {
-                Text("Delete task?")
-            },
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete task?") },
             text = {
                 Text(
                     text = "Delete \"${task.title}\"? " +
@@ -262,9 +320,7 @@ private fun TaskDetailScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = {
-                        showDeleteDialog = false
-                    }
+                    onClick = { showDeleteDialog = false }
                 ) {
                     Text("Cancel")
                 }

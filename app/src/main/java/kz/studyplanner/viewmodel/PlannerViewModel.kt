@@ -59,6 +59,26 @@ class PlannerViewModel : ViewModel() {
         )
     }
 
+    fun updateTask(
+        taskId: Long,
+        title: String,
+        course: String,
+        dueDate: String,
+        notes: String
+    ): Boolean {
+        require(validateTask(title, course, dueDate) == null) {
+            "Invalid task data"
+        }
+
+        return repository.updateTask(
+            taskId = taskId,
+            title = title,
+            course = course,
+            dueDate = dueDate.trim(),
+            notes = notes
+        )
+    }
+
     fun toggleTaskCompletion(taskId: Long) {
         repository.toggleTaskCompletion(taskId)
     }

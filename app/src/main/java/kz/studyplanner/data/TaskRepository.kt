@@ -43,7 +43,7 @@ class TaskRepository {
             id = nextId++,
             title = title.trim(),
             course = course.trim(),
-            dueDate = dueDate,
+            dueDate = dueDate.trim(),
             notes = notes.trim()
         )
 
@@ -52,6 +52,38 @@ class TaskRepository {
         }
 
         return task.id
+    }
+
+    fun updateTask(
+        taskId: Long,
+        title: String,
+        course: String,
+        dueDate: String,
+        notes: String
+    ): Boolean {
+        require(title.isNotBlank()) { "Title cannot be blank" }
+        require(course.isNotBlank()) { "Course cannot be blank" }
+
+        if (_tasks.value.none { it.id == taskId }) {
+            return false
+        }
+
+        _tasks.update { currentTasks ->
+            currentTasks.map { task ->
+                if (task.id == taskId) {
+                    task.copy(
+                        title = title.trim(),
+                        course = course.trim(),
+                        dueDate = dueDate.trim(),
+                        notes = notes.trim()
+                    )
+                } else {
+                    task
+                }
+            }
+        }
+
+        return true
     }
 
     fun toggleTaskCompletion(taskId: Long) {
