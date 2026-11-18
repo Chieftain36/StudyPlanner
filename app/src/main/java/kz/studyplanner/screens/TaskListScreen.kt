@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -26,6 +27,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kz.studyplanner.data.StudyTask
 
+private enum class TaskFilter(val label: String) {
+    ALL("All"),
+    ACTIVE("Active"),
+    DONE("Done")
+}
+
 @Composable
 fun TaskListScreen(
     tasks: List<StudyTask>,
@@ -33,12 +40,25 @@ fun TaskListScreen(
     modifier: Modifier = Modifier
 ) {
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedFilterName by rememberSaveable {
+        mutableStateOf(TaskFilter.ALL.name)
+    }
 
+    val selectedFilter = TaskFilter.valueOf(selectedFilterName)
     val query = searchQuery.trim()
 
     val filteredTasks = tasks.filter { task ->
-        task.title.contains(query, ignoreCase = true) ||
-                task.course.contains(query, ignoreCase = true)
+        val matchesSearch =
+            task.title.contains(query, ignoreCase = true) ||
+                    task.course.contains(query, ignoreCase = true)
+
+        val matchesFilter = when (selectedFilter) {
+            TaskFilter.ALL -> true
+            TaskFilter.ACTIVE -> !task.isCompleted
+            TaskFilter.DONE -> task.isCompleted
+        }
+
+        matchesSearch && matchesFilter
     }
 
     LazyColumn(
@@ -69,6 +89,24 @@ fun TaskListScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TaskFilter.entries.forEach { filter ->
+                    FilterChip(
+                        selected = selectedFilter == filter,
+                        onClick = {
+                            selectedFilterName = filter.name
+                        },
+                        label = {
+                            Text(text = filter.label)
+                        }
+                    )
+                }
+            }
         }
 
         if (filteredTasks.isEmpty()) {
@@ -77,7 +115,7 @@ fun TaskListScreen(
                     text = if (tasks.isEmpty()) {
                         "No tasks yet."
                     } else {
-                        "No matching tasks."
+                        "No tasks match your search and filter."
                     }
                 )
             }
