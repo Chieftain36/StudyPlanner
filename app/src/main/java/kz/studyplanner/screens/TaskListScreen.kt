@@ -1,0 +1,117 @@
+package kz.studyplanner.ui.screens
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import kz.studyplanner.data.StudyTask
+
+@Composable
+fun TaskListScreen(
+    tasks: List<StudyTask>,
+    onToggleTask: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Text(
+                text = "Study Planner",
+                style = MaterialTheme.typography.headlineLarge
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "${tasks.count { !it.isCompleted }} active · " +
+                        "${tasks.count { it.isCompleted }} completed",
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        if (tasks.isEmpty()) {
+            item {
+                Text(text = "No tasks yet.")
+            }
+        }
+
+        items(
+            items = tasks,
+            key = { task -> task.id }
+        ) { task ->
+            TaskCard(
+                task = task,
+                onToggle = { onToggleTask(task.id) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun TaskCard(
+    task: StudyTask,
+    onToggle: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = task.course,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = task.title,
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Due: ${task.dueDate}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Text(
+                    text = if (task.isCompleted) "Completed" else "In progress",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Checkbox(
+                checked = task.isCompleted,
+                onCheckedChange = { onToggle() }
+            )
+        }
+    }
+}
