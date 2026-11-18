@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import kz.studyplanner.data.StudyTask
+import kz.studyplanner.ui.screens.TaskFormScreen
 import kz.studyplanner.ui.screens.TaskListScreen
 import kz.studyplanner.viewmodel.PlannerViewModel
 
@@ -30,7 +31,22 @@ fun PlannerNavigation(
         startDestination = "tasks"
     ) {
         composable("tasks") {
-            Scaffold { innerPadding ->
+            Scaffold(
+                floatingActionButton = {
+                    FloatingActionButton(
+                        onClick = {
+                            navController.navigate("new") {
+                                launchSingleTop = true
+                            }
+                        }
+                    ) {
+                        Text(
+                            text = "+ Add task",
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
+                }
+            ) { innerPadding ->
                 TaskListScreen(
                     tasks = tasks,
                     onToggleTask = plannerViewModel::toggleTaskCompletion,
@@ -39,9 +55,42 @@ fun PlannerNavigation(
                             launchSingleTop = true
                         }
                     },
-                    modifier = Modifier.padding(innerPadding)
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .padding(bottom = 80.dp)
                 )
             }
+        }
+
+        composable("new") {
+            TaskFormScreen(
+                onBack = {
+                    navController.popBackStack()
+                },
+                onSave = { title, course, dueDate, notes ->
+                    val error = plannerViewModel.validateTask(
+                        title = title,
+                        course = course,
+                        dueDate = dueDate
+                    )
+
+                    if (error == null) {
+                        val taskId = plannerViewModel.addTask(
+                            title = title,
+                            course = course,
+                            dueDate = dueDate,
+                            notes = notes
+                        )
+
+                        navController.navigate("task/$taskId") {
+                            popUpTo("tasks")
+                            launchSingleTop = true
+                        }
+                    }
+
+                    error
+                }
+            )
         }
 
         composable(

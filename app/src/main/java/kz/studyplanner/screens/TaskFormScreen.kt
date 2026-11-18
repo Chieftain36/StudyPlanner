@@ -1,0 +1,129 @@
+package kz.studyplanner.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import java.time.LocalDate
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TaskFormScreen(
+    onBack: () -> Unit,
+    onSave: (String, String, String, String) -> String?
+) {
+    var title by rememberSaveable { mutableStateOf("") }
+    var course by rememberSaveable { mutableStateOf("") }
+
+    var dueDate by rememberSaveable {
+        mutableStateOf(LocalDate.now().toString())
+    }
+
+    var notes by rememberSaveable { mutableStateOf("") }
+    var error by rememberSaveable { mutableStateOf<String?>(null) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text("New task")
+                },
+                navigationIcon = {
+                    TextButton(onClick = onBack) {
+                        Text("Back")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Plan your next step",
+                style = MaterialTheme.typography.headlineMedium
+            )
+
+            OutlinedTextField(
+                value = title,
+                onValueChange = {
+                    title = it
+                    error = null
+                },
+                label = {
+                    Text("Task title *")
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = course,
+                onValueChange = {
+                    course = it
+                    error = null
+                },
+                label = {
+                    Text("Course *")
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = dueDate,
+                onValueChange = {
+                    dueDate = it
+                    error = null
+                },
+                label = {
+                    Text("Due date *")
+                },
+                supportingText = {
+                    Text("YYYY-MM-DD, for example 2026-11-25")
+                },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = notes,
+                onValueChange = {
+                    notes = it
+                    error = null
+                },
+                label = {
+                    Text("Notes")
+                },
+                minLines = 4,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            error?.let { message ->
+                Text(
+                    text = message,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Button(
+                onClick = {
+                    error = onSave(title, course, dueDate, notes)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Save task")
+            }
+        }
+    }
+}
