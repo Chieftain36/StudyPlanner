@@ -14,8 +14,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -27,6 +32,15 @@ fun TaskListScreen(
     onToggleTask: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+
+    val query = searchQuery.trim()
+
+    val filteredTasks = tasks.filter { task ->
+        task.title.contains(query, ignoreCase = true) ||
+                task.course.contains(query, ignoreCase = true)
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp),
@@ -46,17 +60,31 @@ fun TaskListScreen(
                 style = MaterialTheme.typography.bodyLarge
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                label = { Text("Search tasks or courses") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
-        if (tasks.isEmpty()) {
+        if (filteredTasks.isEmpty()) {
             item {
-                Text(text = "No tasks yet.")
+                Text(
+                    text = if (tasks.isEmpty()) {
+                        "No tasks yet."
+                    } else {
+                        "No matching tasks."
+                    }
+                )
             }
         }
 
         items(
-            items = tasks,
+            items = filteredTasks,
             key = { task -> task.id }
         ) { task ->
             TaskCard(
@@ -103,7 +131,11 @@ private fun TaskCard(
                 )
 
                 Text(
-                    text = if (task.isCompleted) "Completed" else "In progress",
+                    text = if (task.isCompleted) {
+                        "Completed"
+                    } else {
+                        "In progress"
+                    },
                     style = MaterialTheme.typography.bodySmall
                 )
             }
