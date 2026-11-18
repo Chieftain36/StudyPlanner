@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -113,6 +114,12 @@ fun PlannerNavigation(
                     task?.let {
                         plannerViewModel.toggleTaskCompletion(it.id)
                     }
+                },
+                onDelete = {
+                    task?.let {
+                        plannerViewModel.deleteTask(it.id)
+                        navController.popBackStack()
+                    }
                 }
             )
         }
@@ -124,8 +131,13 @@ fun PlannerNavigation(
 private fun TaskDetailScreen(
     task: StudyTask?,
     onBack: () -> Unit,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    onDelete: () -> Unit
 ) {
+    var showDeleteDialog by rememberSaveable(task?.id) {
+        mutableStateOf(false)
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -205,7 +217,58 @@ private fun TaskDetailScreen(
                         }
                     )
                 }
+
+                OutlinedButton(
+                    onClick = {
+                        showDeleteDialog = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete task")
+                }
             }
         }
+    }
+
+    if (showDeleteDialog && task != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteDialog = false
+            },
+            title = {
+                Text("Delete task?")
+            },
+            text = {
+                Text(
+                    text = "Delete \"${task.title}\"? " +
+                            "This action cannot be undone."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDelete()
+                    }
+                ) {
+                    Text(
+                        text = "Delete",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
