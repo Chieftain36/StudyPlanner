@@ -8,6 +8,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import kz.studyplanner.data.StudyTask
 
@@ -24,7 +28,9 @@ fun TaskListScreen(
     onOpenTask: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var searchQuery by rememberSaveable {
+        mutableStateOf("")
+    }
 
     var selectedFilterName by rememberSaveable {
         mutableStateOf(TaskFilter.ALL.name)
@@ -55,7 +61,10 @@ fun TaskListScreen(
         item {
             Text(
                 text = "Study Planner",
-                style = MaterialTheme.typography.headlineLarge
+                style = MaterialTheme.typography.headlineLarge,
+                modifier = Modifier.semantics {
+                    heading()
+                }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -70,8 +79,12 @@ fun TaskListScreen(
 
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = { Text("Search tasks or courses") },
+                onValueChange = {
+                    searchQuery = it
+                },
+                label = {
+                    Text("Search tasks or courses")
+                },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -88,7 +101,7 @@ fun TaskListScreen(
                             selectedFilterName = filter.name
                         },
                         label = {
-                            Text(text = filter.label)
+                            Text(filter.label)
                         }
                     )
                 }
@@ -113,8 +126,12 @@ fun TaskListScreen(
         ) { task ->
             TaskCard(
                 task = task,
-                onOpen = { onOpenTask(task.id) },
-                onToggle = { onToggleTask(task.id) }
+                onOpen = {
+                    onOpenTask(task.id)
+                },
+                onToggle = {
+                    onToggleTask(task.id)
+                }
             )
         }
     }
@@ -169,7 +186,18 @@ private fun TaskCard(
 
             Checkbox(
                 checked = task.isCompleted,
-                onCheckedChange = { onToggle() }
+                onCheckedChange = {
+                    onToggle()
+                },
+                modifier = Modifier.semantics {
+                    contentDescription = "Completion: ${task.title}"
+
+                    stateDescription = if (task.isCompleted) {
+                        "Completed"
+                    } else {
+                        "Active"
+                    }
+                }
             )
         }
     }
