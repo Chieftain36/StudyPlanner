@@ -6,6 +6,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -14,6 +15,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import kz.studyplanner.data.StudyTask
 import kz.studyplanner.ui.screens.TaskFormScreen
 import kz.studyplanner.ui.screens.TaskListScreen
@@ -24,163 +27,251 @@ fun PlannerNavigation(
     plannerViewModel: PlannerViewModel
 ) {
     val navController = rememberNavController()
-    val tasks by plannerViewModel.tasks.collectAsStateWithLifecycle()
 
-    NavHost(
-        navController = navController,
-        startDestination = "tasks"
-    ) {
-        composable("tasks") {
-            Scaffold(
-                floatingActionButton = {
-                    FloatingActionButton(
-                        onClick = {
-                            navController.navigate("new") {
-                                launchSingleTop = true
-                            }
-                        }
+    val tasks by plannerViewModel.tasks.collectAsStateWithLifecycle()
+    val isLoading by plannerViewModel.isLoading.collectAsStateWithLifecycle()
+    val loadError by plannerViewModel.loadError.collectAsStateWithLifecycle()
+
+    val scope = rememberCoroutineScope()
+
+    var actionError by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var isDeleting by remember {
+        mutableStateOf(false)
+    }
+
+    fun performAction(action: suspend () -> Unit) {
+        scope.launch {
+            try {
+                action()
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                actionError =
+                    "Could not update the task. Please try again."
+            }
+        }
+    }
+
+    if (isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    if (loadError != null) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(loadError.orEmpty())
+
+            Button(onClick = plannerViewModel::retryLoading) {
+                Text("Retry")
+            }
+        }
+        return
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        if (actionError != null) {
+            Snackbar(
+                action = {
+                    TextButton(
+                        onClick = { actionError = null }
                     ) {
-                        Text(
-                            text = "+ Add task",
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
+                        Text("Dismiss")
                     }
                 }
-            ) { innerPadding ->
-                TaskListScreen(
-                    tasks = tasks,
-                    onToggleTask = plannerViewModel::toggleTaskCompletion,
-                    onOpenTask = { taskId ->
-                        navController.navigate("task/$taskId") {
-                            launchSingleTop = true
-                        }
-                    },
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .padding(bottom = 80.dp)
-                )
+            ) {
+                Text(actionError.orEmpty())
             }
         }
 
-        composable("new") {
-            TaskFormScreen(
-                onBack = {
-                    navController.popBackStack()
-                },
-                onSave = { title, course, dueDate, notes ->
-                    val error = plannerViewModel.validateTask(
-                        title = title,
-                        course = course,
-                        dueDate = dueDate
+        NavHost(
+            navController = navController,
+            startDestination = "tasks",
+            modifier = Modifier.weight(1f)
+        ) {
+            composable("tasks") {
+                Scaffold(
+                    floatingActionButton = {
+                        FloatingActionButton(
+                            onClick = {
+                                navController.navigate("new") {
+                                    launchSingleTop = true
+                                }
+                            }
+                        ) {
+                            Text(
+                                text = "+ Add task",
+                                modifier = Modifier.padding(
+                                    horizontal = 16.dp
+                                )
+                            )
+                        }
+                    }
+                ) { innerPadding ->
+                    TaskListScreen(
+                        tasks = tasks,
+                        onToggleTask = { id ->
+                            performAction {
+                                plannerViewModel.toggleTaskCompletion(id)
+                            }
+                        },
+                        onOpenTask = { id ->
+                            navController.navigate("task/$id") {
+                                launchSingleTop = true
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .padding(bottom = 80.dp)
                     )
-
-                    if (error == null) {
-                        val taskId = plannerViewModel.addTask(
-                            title = title,
-                            course = course,
-                            dueDate = dueDate,
-                            notes = notes
-                        )
-
-                        navController.navigate("task/$taskId") {
-                            popUpTo("tasks")
-                            launchSingleTop = true
-                        }
-                    }
-
-                    error
                 }
-            )
-        }
+            }
 
-        composable(
-            route = "task/{taskId}",
-            arguments = listOf(
-                navArgument("taskId") {
-                    type = NavType.LongType
-                }
-            )
-        ) { backStackEntry ->
-            val taskId = backStackEntry.arguments?.getLong("taskId")
-            val task = tasks.find { it.id == taskId }
-
-            TaskDetailScreen(
-                task = task,
-                onBack = {
-                    navController.popBackStack()
-                },
-                onEdit = {
-                    task?.let {
-                        navController.navigate("edit/${it.id}") {
-                            launchSingleTop = true
-                        }
-                    }
-                },
-                onToggle = {
-                    task?.let {
-                        plannerViewModel.toggleTaskCompletion(it.id)
-                    }
-                },
-                onDelete = {
-                    task?.let {
-                        plannerViewModel.deleteTask(it.id)
-                        navController.popBackStack()
-                    }
-                }
-            )
-        }
-
-        composable(
-            route = "edit/{taskId}",
-            arguments = listOf(
-                navArgument("taskId") {
-                    type = NavType.LongType
-                }
-            )
-        ) { backStackEntry ->
-            val taskId = backStackEntry.arguments?.getLong("taskId")
-            val task = tasks.find { it.id == taskId }
-
-            if (task == null) {
-                TaskDetailScreen(
-                    task = null,
-                    onBack = { navController.popBackStack() },
-                    onEdit = {},
-                    onToggle = {},
-                    onDelete = {}
-                )
-            } else {
+            composable("new") {
                 TaskFormScreen(
-                    initialTask = task,
                     onBack = {
                         navController.popBackStack()
                     },
                     onSave = { title, course, dueDate, notes ->
-                        var error = plannerViewModel.validateTask(
-                            title = title,
-                            course = course,
-                            dueDate = dueDate
+                        val error = plannerViewModel.validateTask(
+                            title,
+                            course,
+                            dueDate
                         )
 
                         if (error == null) {
-                            val updated = plannerViewModel.updateTask(
-                                taskId = task.id,
-                                title = title,
-                                course = course,
-                                dueDate = dueDate,
-                                notes = notes
+                            plannerViewModel.addTask(
+                                title,
+                                course,
+                                dueDate,
+                                notes
                             )
 
-                            if (updated) {
-                                navController.popBackStack()
-                            } else {
-                                error = "Task no longer exists."
-                            }
+                            navController.popBackStack()
                         }
 
                         error
                     }
                 )
+            }
+
+            composable(
+                route = "task/{taskId}",
+                arguments = listOf(
+                    navArgument("taskId") {
+                        type = NavType.LongType
+                    }
+                )
+            ) { entry ->
+                val task = tasks.find {
+                    it.id == entry.arguments?.getLong("taskId")
+                }
+
+                TaskDetailScreen(
+                    task = task,
+                    onBack = {
+                        navController.popBackStack()
+                    },
+                    onEdit = {
+                        task?.let {
+                            navController.navigate("edit/${it.id}") {
+                                launchSingleTop = true
+                            }
+                        }
+                    },
+                    onToggle = {
+                        task?.let {
+                            performAction {
+                                plannerViewModel.toggleTaskCompletion(
+                                    it.id
+                                )
+                            }
+                        }
+                    },
+                    onDelete = {
+                        if (task != null && !isDeleting) {
+                            isDeleting = true
+
+                            performAction {
+                                try {
+                                    plannerViewModel.deleteTask(task.id)
+                                    navController.popBackStack()
+                                } finally {
+                                    isDeleting = false
+                                }
+                            }
+                        }
+                    }
+                )
+            }
+
+            composable(
+                route = "edit/{taskId}",
+                arguments = listOf(
+                    navArgument("taskId") {
+                        type = NavType.LongType
+                    }
+                )
+            ) { entry ->
+                val task = tasks.find {
+                    it.id == entry.arguments?.getLong("taskId")
+                }
+
+                if (task == null) {
+                    TaskDetailScreen(
+                        task = null,
+                        onBack = { navController.popBackStack() },
+                        onEdit = {},
+                        onToggle = {},
+                        onDelete = {}
+                    )
+                } else {
+                    TaskFormScreen(
+                        initialTask = task,
+                        onBack = {
+                            navController.popBackStack()
+                        },
+                        onSave = { title, course, dueDate, notes ->
+                            var error = plannerViewModel.validateTask(
+                                title,
+                                course,
+                                dueDate
+                            )
+
+                            if (error == null) {
+                                val updated =
+                                    plannerViewModel.updateTask(
+                                        task.id,
+                                        title,
+                                        course,
+                                        dueDate,
+                                        notes
+                                    )
+
+                                if (updated) {
+                                    navController.popBackStack()
+                                } else {
+                                    error = "Task no longer exists."
+                                }
+                            }
+
+                            error
+                        }
+                    )
+                }
             }
         }
     }
@@ -265,7 +356,9 @@ private fun TaskDetailScreen(
                 )
 
                 Text(
-                    text = task.notes.ifBlank { "No notes yet." },
+                    text = task.notes.ifBlank {
+                        "No notes yet."
+                    },
                     style = MaterialTheme.typography.bodyLarge
                 )
 
@@ -274,7 +367,7 @@ private fun TaskDetailScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = if (task.isCompleted) {
+                        if (task.isCompleted) {
                             "Mark as active"
                         } else {
                             "Mark as completed"
@@ -297,11 +390,15 @@ private fun TaskDetailScreen(
 
     if (showDeleteDialog && task != null) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete task?") },
+            onDismissRequest = {
+                showDeleteDialog = false
+            },
+            title = {
+                Text("Delete task?")
+            },
             text = {
                 Text(
-                    text = "Delete \"${task.title}\"? " +
+                    "Delete \"${task.title}\"? " +
                             "This action cannot be undone."
                 )
             },
@@ -320,7 +417,9 @@ private fun TaskDetailScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showDeleteDialog = false }
+                    onClick = {
+                        showDeleteDialog = false
+                    }
                 ) {
                     Text("Cancel")
                 }

@@ -32,7 +32,11 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             StudyPlannerTheme {
-                val plannerViewModel: PlannerViewModel = viewModel()
+                val plannerViewModel: PlannerViewModel = viewModel(
+                    factory = PlannerViewModel.factory(
+                        applicationContext
+                    )
+                )
 
                 val mainNavController = rememberNavController()
 
@@ -80,8 +84,9 @@ class MainActivity : ComponentActivity() {
                     NavHost(
                         navController = mainNavController,
                         startDestination = "planner",
-                        modifier = androidx.compose.ui.Modifier
-                            .padding(bottom = innerPadding.calculateBottomPadding())
+                        modifier = Modifier.padding(
+                            bottom = innerPadding.calculateBottomPadding()
+                        )
                     ) {
                         composable("planner") {
                             PlannerNavigation(
@@ -107,10 +112,9 @@ class MainActivity : ComponentActivity() {
                                 onSelectTopic =
                                     studyLabViewModel::selectTopic,
                                 onRetry = studyLabViewModel::retry,
-                                modifier = androidx.compose.ui.Modifier
-                                    .padding(
-                                        top = innerPadding.calculateTopPadding()
-                                    )
+                                modifier = Modifier.padding(
+                                    top = innerPadding.calculateTopPadding()
+                                )
                             )
                         }
                     }

@@ -8,14 +8,16 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kz.studyplanner.data.StudyTask
 import java.time.LocalDate
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+import kz.studyplanner.data.StudyTask
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskFormScreen(
     onBack: () -> Unit,
-    onSave: (String, String, String, String) -> String?,
+    onSave: suspend (String, String, String, String) -> String?,
     initialTask: StudyTask? = null
 ) {
     var title by rememberSaveable(initialTask?.id) {
@@ -40,6 +42,12 @@ fun TaskFormScreen(
         mutableStateOf<String?>(null)
     }
 
+    val scope = rememberCoroutineScope()
+
+    var isSaving by remember {
+        mutableStateOf(false)
+    }
+
     val isEditing = initialTask != null
 
     Scaffold(
@@ -47,15 +55,14 @@ fun TaskFormScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = if (isEditing) {
-                            "Edit task"
-                        } else {
-                            "New task"
-                        }
+                        if (isEditing) "Edit task" else "New task"
                     )
                 },
                 navigationIcon = {
-                    TextButton(onClick = onBack) {
+                    TextButton(
+                        onClick = onBack,
+                        enabled = !isSaving
+                    ) {
                         Text("Back")
                     }
                 }
@@ -81,6 +88,7 @@ fun TaskFormScreen(
             )
 
             OutlinedTextField(
+                enabled = !isSaving,
                 value = title,
                 onValueChange = {
                     title = it
@@ -92,6 +100,7 @@ fun TaskFormScreen(
             )
 
             OutlinedTextField(
+                enabled = !isSaving,
                 value = course,
                 onValueChange = {
                     course = it
@@ -103,6 +112,7 @@ fun TaskFormScreen(
             )
 
             OutlinedTextField(
+                enabled = !isSaving,
                 value = dueDate,
                 onValueChange = {
                     dueDate = it
@@ -117,6 +127,7 @@ fun TaskFormScreen(
             )
 
             OutlinedTextField(
+                enabled = !isSaving,
                 value = notes,
                 onValueChange = {
                     notes = it
@@ -135,13 +146,34 @@ fun TaskFormScreen(
             }
 
             Button(
+                enabled = !isSaving,
                 onClick = {
-                    error = onSave(title, course, dueDate, notes)
+                    if (!isSaving) {
+                        isSaving = true
+
+                        scope.launch {
+                            try {
+                                error = onSave(
+                                    title,
+                                    course,
+                                    dueDate,
+                                    notes
+                                )
+                            } catch (exception: CancellationException) {
+                                throw exception
+                            } catch (exception: Exception) {
+                                error =
+                                    "Could not save the task. Please try again."
+                            } finally {
+                                isSaving = false
+                            }
+                        }
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = if (isEditing) {
+                    if (isEditing) {
                         "Save changes"
                     } else {
                         "Save task"

@@ -1,108 +1,66 @@
 package kz.studyplanner.data
 
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.Flow
+import kz.studyplanner.data.local.TaskDao
 
-class TaskRepository {
+class TaskRepository(
+    private val dao: TaskDao
+) {
+    val tasks: Flow<List<StudyTask>> = dao.observeTasks()
 
-    private var nextId = 3L
-
-    private val _tasks = MutableStateFlow(
-        listOf(
-            StudyTask(
-                id = 1L,
-                title = "Prepare project architecture",
-                course = "CSS 216",
-                dueDate = "2026-11-25",
-                notes = "Explain Model, View and ViewModel."
-            ),
-            StudyTask(
-                id = 2L,
-                title = "Review Kotlin collections",
-                course = "CSS 216",
-                dueDate = "2026-11-26",
-                isCompleted = true
-            )
-        )
-    )
-
-    val tasks: StateFlow<List<StudyTask>> = _tasks.asStateFlow()
-
-    fun addTask(
+    suspend fun addTask(
         title: String,
         course: String,
         dueDate: String,
         notes: String
     ): Long {
-        require(title.isNotBlank()) { "Title cannot be blank" }
-        require(course.isNotBlank()) { "Course cannot be blank" }
-
-        val task = StudyTask(
-            id = nextId++,
-            title = title.trim(),
-            course = course.trim(),
-            dueDate = dueDate.trim(),
-            notes = notes.trim()
-        )
-
-        _tasks.update { currentTasks ->
-            currentTasks + task
+        require(title.isNotBlank()) {
+            "Title cannot be blank"
         }
 
-        return task.id
+        require(course.isNotBlank()) {
+            "Course cannot be blank"
+        }
+
+        return dao.insertTask(
+            StudyTask(
+                title = title.trim(),
+                course = course.trim(),
+                dueDate = dueDate.trim(),
+                notes = notes.trim()
+            )
+        )
     }
 
-    fun updateTask(
+    suspend fun updateTask(
         taskId: Long,
         title: String,
         course: String,
         dueDate: String,
         notes: String
     ): Boolean {
-        require(title.isNotBlank()) { "Title cannot be blank" }
-        require(course.isNotBlank()) { "Course cannot be blank" }
-
-        if (_tasks.value.none { it.id == taskId }) {
-            return false
+        require(title.isNotBlank()) {
+            "Title cannot be blank"
         }
 
-        _tasks.update { currentTasks ->
-            currentTasks.map { task ->
-                if (task.id == taskId) {
-                    task.copy(
-                        title = title.trim(),
-                        course = course.trim(),
-                        dueDate = dueDate.trim(),
-                        notes = notes.trim()
-                    )
-                } else {
-                    task
-                }
-            }
+        require(course.isNotBlank()) {
+            "Course cannot be blank"
         }
 
-        return true
+        return dao.updateTask(
+            taskId = taskId,
+            title = title.trim(),
+            course = course.trim(),
+            dueDate = dueDate.trim(),
+            notes = notes.trim()
+        ) > 0
     }
 
-    fun toggleTaskCompletion(taskId: Long) {
-        _tasks.update { currentTasks ->
-            currentTasks.map { task ->
-                if (task.id == taskId) {
-                    task.copy(isCompleted = !task.isCompleted)
-                } else {
-                    task
-                }
-            }
-        }
+    suspend fun toggleTaskCompletion(taskId: Long) {
+        dao.toggleTaskCompletion(taskId)
     }
 
-    fun deleteTask(taskId: Long) {
-        _tasks.update { currentTasks ->
-            currentTasks.filterNot { task ->
-                task.id == taskId
-            }
-        }
+    suspend fun deleteTask(taskId: Long) {
+        dao.deleteTask(taskId)
     }
 }
