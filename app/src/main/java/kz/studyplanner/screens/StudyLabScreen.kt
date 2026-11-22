@@ -31,6 +31,7 @@ fun StudyLabScreen(
     uiState: StudyLabUiState,
     onSelectTopic: (StudyTopic) -> Unit,
     onRetry: () -> Unit,
+    onCreateTask: (QuestionDto) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -103,7 +104,12 @@ fun StudyLabScreen(
                         items = uiState.questions,
                         key = { it.questionId }
                     ) { question ->
-                        QuestionCard(question = question)
+                        QuestionCard(
+                            question = question,
+                            onCreateTask = {
+                                onCreateTask(question)
+                            }
+                        )
                     }
                 }
             }
@@ -131,7 +137,8 @@ fun StudyLabScreen(
 
 @Composable
 private fun QuestionCard(
-    question: QuestionDto
+    question: QuestionDto,
+    onCreateTask: () -> Unit
 ) {
     val uriHandler = LocalUriHandler.current
 
@@ -189,6 +196,10 @@ private fun QuestionCard(
                     text = question.tags.joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall
                 )
+            }
+
+            Button(onClick = onCreateTask) {
+                Text("Create study task")
             }
 
             TextButton(

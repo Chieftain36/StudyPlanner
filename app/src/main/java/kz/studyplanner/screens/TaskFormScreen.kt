@@ -18,14 +18,17 @@ import kz.studyplanner.data.StudyTask
 fun TaskFormScreen(
     onBack: () -> Unit,
     onSave: suspend (String, String, String, String) -> String?,
-    initialTask: StudyTask? = null
+    initialTask: StudyTask? = null,
+    initialTitle: String = "",
+    initialCourse: String = "",
+    initialNotes: String = ""
 ) {
-    var title by rememberSaveable(initialTask?.id) {
-        mutableStateOf(initialTask?.title ?: "")
+    var title by rememberSaveable(initialTask?.id, initialTitle) {
+        mutableStateOf(initialTask?.title ?: initialTitle)
     }
 
-    var course by rememberSaveable(initialTask?.id) {
-        mutableStateOf(initialTask?.course ?: "")
+    var course by rememberSaveable(initialTask?.id, initialCourse) {
+        mutableStateOf(initialTask?.course ?: initialCourse)
     }
 
     var dueDate by rememberSaveable(initialTask?.id) {
@@ -34,8 +37,8 @@ fun TaskFormScreen(
         )
     }
 
-    var notes by rememberSaveable(initialTask?.id) {
-        mutableStateOf(initialTask?.notes ?: "")
+    var notes by rememberSaveable(initialTask?.id, initialNotes) {
+        mutableStateOf(initialTask?.notes ?: initialNotes)
     }
 
     var error by rememberSaveable(initialTask?.id) {

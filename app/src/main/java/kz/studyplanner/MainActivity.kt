@@ -11,17 +11,15 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import kz.studyplanner.navigation.PlannerNavigation
-import kz.studyplanner.ui.screens.StudyLabScreen
+import kz.studyplanner.navigation.StudyLabNavigation
 import kz.studyplanner.ui.theme.StudyPlannerTheme
 import kz.studyplanner.viewmodel.PlannerViewModel
-import kz.studyplanner.viewmodel.StudyLabViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -95,23 +93,8 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("study_lab") {
-                            val studyLabViewModel: StudyLabViewModel =
-                                viewModel()
-
-                            val selectedTopic by studyLabViewModel
-                                .selectedTopic
-                                .collectAsStateWithLifecycle()
-
-                            val uiState by studyLabViewModel
-                                .uiState
-                                .collectAsStateWithLifecycle()
-
-                            StudyLabScreen(
-                                selectedTopic = selectedTopic,
-                                uiState = uiState,
-                                onSelectTopic =
-                                    studyLabViewModel::selectTopic,
-                                onRetry = studyLabViewModel::retry,
+                            StudyLabNavigation(
+                                plannerViewModel = plannerViewModel,
                                 modifier = Modifier.padding(
                                     top = innerPadding.calculateTopPadding()
                                 )
