@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -32,7 +33,11 @@ fun StudyLabNavigation(
 ) {
     val navController = rememberNavController()
 
-    val studyLabViewModel: StudyLabViewModel = viewModel()
+    val context = LocalContext.current
+
+    val studyLabViewModel: StudyLabViewModel = viewModel(
+        factory = StudyLabViewModel.factory(context)
+    )
 
     val selectedTopic by studyLabViewModel
         .selectedTopic

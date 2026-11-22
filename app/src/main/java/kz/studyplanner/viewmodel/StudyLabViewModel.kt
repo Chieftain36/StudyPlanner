@@ -1,7 +1,11 @@
 package kz.studyplanner.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -10,11 +14,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerializationException
 import kz.studyplanner.data.StudyLabRepository
+import kz.studyplanner.data.StudyPreferencesRepository
 import kz.studyplanner.data.StudyTopic
 import kz.studyplanner.data.remote.QuestionDto
 import retrofit2.HttpException
 
 sealed interface StudyLabUiState {
+
     data object Loading : StudyLabUiState
 
     data class Success(
@@ -28,7 +34,9 @@ sealed interface StudyLabUiState {
     ) : StudyLabUiState
 }
 
-class StudyLabViewModel : ViewModel() {
+class StudyLabViewModel(
+    private val preferencesRepository: StudyPreferencesRepository
+) : ViewModel() {
 
     private val repository = StudyLabRepository()
 
@@ -45,22 +53,68 @@ class StudyLabViewModel : ViewModel() {
     val uiState = _uiState.asStateFlow()
 
     private var loadingJob: Job? = null
+    private var preferencesJob: Job? = null
+
+    private var preferencesLoaded = false
 
     init {
-        loadQuestions()
+        observePreferences()
+    }
+
+    private fun observePreferences() {
+        preferencesJob?.cancel()
+
+        _uiState.value = StudyLabUiState.Loading
+
+        preferencesJob = viewModelScope.launch {
+            try {
+                preferencesRepository.selectedTopic.collect { topic ->
+                    val shouldLoad =
+                        !preferencesLoaded ||
+                                _selectedTopic.value != topic
+
+                    preferencesLoaded = true
+                    _selectedTopic.value = topic
+
+                    if (shouldLoad) {
+                        loadQuestions()
+                    }
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                preferencesLoaded = false
+                loadingJob?.cancel()
+
+                _uiState.value = StudyLabUiState.Error(
+                    "Could not read your saved topic. Tap Retry."
+                )
+            }
+        }
     }
 
     fun selectTopic(topic: StudyTopic) {
-        if (_selectedTopic.value == topic) {
-            return
-        }
+        viewModelScope.launch {
+            try {
+                preferencesRepository.saveTopic(topic)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                loadingJob?.cancel()
 
-        _selectedTopic.value = topic
-        loadQuestions()
+                _uiState.value = StudyLabUiState.Error(
+                    "Could not save your topic. Please select it again."
+                )
+            }
+        }
     }
 
     fun retry() {
-        loadQuestions()
+        if (preferencesLoaded) {
+            loadQuestions()
+        } else {
+            observePreferences()
+        }
     }
 
     private fun loadQuestions() {
@@ -97,6 +151,21 @@ class StudyLabViewModel : ViewModel() {
                 _uiState.value = StudyLabUiState.Error(
                     exception.message
                         ?: "Could not load questions. Try again."
+                )
+            }
+        }
+    }
+
+    companion object {
+
+        fun factory(
+            context: Context
+        ): ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                StudyLabViewModel(
+                    StudyPreferencesRepository(
+                        context.applicationContext
+                    )
                 )
             }
         }
