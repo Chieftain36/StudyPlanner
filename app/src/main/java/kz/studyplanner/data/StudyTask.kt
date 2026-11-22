@@ -1,7 +1,12 @@
 package kz.studyplanner.data
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "tasks")
 data class StudyTask(
-    val id: Long,
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
     val title: String,
     val course: String,
     val dueDate: String,
