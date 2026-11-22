@@ -4,10 +4,24 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import kz.studyplanner.navigation.PlannerNavigation
+import kz.studyplanner.ui.screens.StudyLabScreen
 import kz.studyplanner.ui.theme.StudyPlannerTheme
 import kz.studyplanner.viewmodel.PlannerViewModel
+import kz.studyplanner.viewmodel.StudyLabViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -20,9 +34,87 @@ class MainActivity : ComponentActivity() {
             StudyPlannerTheme {
                 val plannerViewModel: PlannerViewModel = viewModel()
 
-                PlannerNavigation(
-                    plannerViewModel = plannerViewModel
-                )
+                val mainNavController = rememberNavController()
+
+                val backStackEntry by
+                mainNavController.currentBackStackEntryAsState()
+
+                val currentRoute =
+                    backStackEntry?.destination?.route ?: "planner"
+
+                Scaffold(
+                    bottomBar = {
+                        NavigationBar {
+                            NavigationBarItem(
+                                selected = currentRoute == "planner",
+                                onClick = {
+                                    mainNavController.navigate("planner") {
+                                        popUpTo("planner") {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                icon = { Text("✓") },
+                                label = { Text("Tasks") }
+                            )
+
+                            NavigationBarItem(
+                                selected = currentRoute == "study_lab",
+                                onClick = {
+                                    mainNavController.navigate("study_lab") {
+                                        popUpTo("planner") {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                icon = { Text("?") },
+                                label = { Text("Study Lab") }
+                            )
+                        }
+                    }
+                ) { innerPadding ->
+                    NavHost(
+                        navController = mainNavController,
+                        startDestination = "planner",
+                        modifier = androidx.compose.ui.Modifier
+                            .padding(bottom = innerPadding.calculateBottomPadding())
+                    ) {
+                        composable("planner") {
+                            PlannerNavigation(
+                                plannerViewModel = plannerViewModel
+                            )
+                        }
+
+                        composable("study_lab") {
+                            val studyLabViewModel: StudyLabViewModel =
+                                viewModel()
+
+                            val selectedTopic by studyLabViewModel
+                                .selectedTopic
+                                .collectAsStateWithLifecycle()
+
+                            val uiState by studyLabViewModel
+                                .uiState
+                                .collectAsStateWithLifecycle()
+
+                            StudyLabScreen(
+                                selectedTopic = selectedTopic,
+                                uiState = uiState,
+                                onSelectTopic =
+                                    studyLabViewModel::selectTopic,
+                                onRetry = studyLabViewModel::retry,
+                                modifier = androidx.compose.ui.Modifier
+                                    .padding(
+                                        top = innerPadding.calculateTopPadding()
+                                    )
+                            )
+                        }
+                    }
+                }
             }
         }
     }
