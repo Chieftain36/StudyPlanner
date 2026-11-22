@@ -1,2 +1,0 @@
-package kz.studyplanner.viewmodel
-
